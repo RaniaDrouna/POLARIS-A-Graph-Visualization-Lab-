@@ -1,1 +1,1 @@
-# POLARIS-A-Graph-Visualization-Lab-
+# POLARIS : A Graph Visualization Lab
