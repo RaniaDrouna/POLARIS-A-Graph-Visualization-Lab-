@@ -1,0 +1,628 @@
+/* style.css for Polaris Antenna Visualizer */
+
+/* Import fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* Base styles */
+:root {
+  --primary-color: #1e40af;
+  --primary-light: #3b82f6;
+  --primary-dark: #1e3a8a;
+  --accent-color: #0ea5e9;
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --danger-color: #ef4444;
+  --background-light: #f0f9ff;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+  --transition-fast: 150ms ease-in-out;
+  --transition-normal: 250ms ease-in-out;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Global styles */
+body {
+  font-family: "Nunito", sans-serif;
+  background: var(--background-light);
+  color: var(--gray-800);
+  line-height: 1.5;
+  margin: 0;
+  padding: 0;
+  transition: background-color var(--transition-normal);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.25;
+  margin-top: 0;
+}
+
+/* Modern scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--gray-100);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--gray-300);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-400);
+}
+
+/* Button enhancements */
+button {
+  transition: all var(--transition-fast);
+  position: relative;
+  overflow: hidden;
+}
+
+button:after {
+  content: '';
+  display: block;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle, #fff 10%, transparent 10.01%);
+  background-repeat: no-repeat;
+  background-position: 50%;
+  transform: scale(10, 10);
+  opacity: 0;
+  transition: transform 0.5s, opacity 0.8s;
+}
+
+button:active:after {
+  transform: scale(0, 0);
+  opacity: 0.3;
+  transition: 0s;
+}
+
+/* Fancy button hover effects */
+.bg-blue-600:hover {
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  transform: translateY(-1px);
+}
+
+.bg-blue-600:active {
+  transform: translateY(0);
+}
+
+/* Input fields */
+input[type="number"],
+input[type="text"],
+select {
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  border-radius: 0.375rem;
+}
+
+input[type="number"]:focus,
+input[type="text"]:focus,
+select:focus {
+  outline: none;
+  border-color: var(--primary-light);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+}
+
+/* Modern range slider */
+input[type="range"] {
+  -webkit-appearance: none;
+  height: 6px;
+  background: var(--gray-200);
+  border-radius: 3px;
+  margin: 10px 0;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  background: var(--primary-light);
+  transform: scale(1.1);
+}
+
+/* Color list */
+#colorList {
+  border-radius: 0.375rem;
+  overflow: hidden;
+  transition: border-color var(--transition-fast);
+}
+
+#colorList option {
+  padding: 8px 12px;
+  transition: background-color var(--transition-fast);
+}
+
+#colorList option:checked {
+  background-color: rgba(59, 130, 246, 0.2);
+}
+
+/* Control panel */
+.bg-blue-100 {
+  background: linear-gradient(to bottom right, #dbeafe, #eff6ff);
+  border: 1px solid rgba(59, 130, 246, 0.1);
+}
+
+/* Graph panel */
+.bg-white {
+  box-shadow: var(--shadow-md);
+  border-radius: 0.5rem;
+  transition: box-shadow var(--transition-normal);
+}
+
+.bg-white:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+/* Title styling */
+.text-3xl.font-bold {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  letter-spacing: -0.025em;
+}
+
+/* Graph image */
+#graphImage {
+  border-radius: 0.375rem;
+  transition: transform var(--transition-normal);
+  box-shadow: var(--shadow);
+}
+
+#graphImage:not(.hidden) {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+/* Color picker modal */
+#colorModal {
+  backdrop-filter: blur(4px);
+  transition: opacity var(--transition-normal);
+}
+
+.color-item {
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  border: 2px solid transparent;
+}
+
+.color-item:hover {
+  transform: scale(1.05);
+  box-shadow: var(--shadow-md);
+  z-index: 1;
+}
+
+/* Checkbox styles */
+input[type="checkbox"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--gray-400);
+  border-radius: 3px;
+  margin-right: 8px;
+  position: relative;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+  vertical-align: middle;
+}
+
+input[type="checkbox"]:checked {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 2px;
+  width: 5px;
+  height: 9px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+input[type="checkbox"]:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+}
+
+/* Loading indicator */
+#loadingIndicator {
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+  }
+
+  .text-3xl {
+    font-size: 1.5rem;
+  }
+
+  button {
+    padding: 0.5rem 1rem;
+  }
+}
+
+.title-text {
+  position: relative;
+  display: inline-block;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  background: linear-gradient(45deg, #1e40af, #3b82f6, #38bdf8, #1e40af);
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: gradientFlow 8s ease infinite;
+}
+
+.title-text::after {
+  content: attr(data-text);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  filter: blur(8px) opacity(0.6);  /* Reduced blur and opacity for better effect */
+  background: inherit;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.star {
+  position: absolute;
+  background: white;
+  border-radius: 50%;
+  filter: blur(1px);
+  opacity: 0;
+  animation: twinkle 5s infinite;
+}
+
+.glassmorphism {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.20);
+}
+
+/* Dark mode support (can be toggled via JavaScript) */
+/* Dark mode color palette (purple theme) */
+.dark-mode {
+  --background-light: #1f1f47; /* Using splash screen background color */
+  --gray-100: #2a2a5a;
+  --gray-200: #343464;
+  --gray-300: #45456e;
+  --gray-400: #6e7891;
+  --gray-500: #9aa1b9;
+  --gray-800: #dde1f0;
+  --gray-900: #f7f8fc;
+
+  /* Purple theme colors matching the splash screen */
+  --primary-color: #7873f5;  /* From splash screen gradient */
+  --primary-light: #9c96ff;  /* Lighter shade */
+  --accent-color: #ff6ec4;   /* From splash screen gradient */
+
+  background: #1f1f47; /* Match splash screen background */
+  color: var(--gray-800);
+  position: relative;
+  overflow-x: hidden; /* Prevent horizontal scrolling due to blob */
+}
+
+.dark-mode::before {
+  content: "";
+  position: fixed;
+  width: 500px;
+  height: 500px;
+  background: linear-gradient(
+    180deg,
+    rgba(47, 184, 255, 0.42) 31.77%,
+    #5c9df1 100%
+  );
+  mix-blend-mode: color-dodge;
+  animation: move 25s infinite alternate;
+  transition: 1s cubic-bezier(0.07, 0.8, 0.16, 1);
+  z-index: -1;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.dark-mode::before:hover {
+  width: 520px;
+  height: 520px;
+  filter: blur(30px);
+  box-shadow:
+    inset 0 0 0 5px rgba(255,255,255, 0.6),
+    inset 100px 100px 0 0px #fa709a,
+    inset 200px 200px 0 0px #784ba8,
+    inset 300px 300px 0 0px #2b86c5;
+}
+
+.dark-mode::after {
+  content: "";
+  position: fixed;
+  width: 300px;
+  height: 300px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 110, 196, 0.4) 31.77%,
+    #784ba8 100%
+  );
+  mix-blend-mode: color-dodge;
+  animation: move2 30s infinite alternate;
+  transition: 1s cubic-bezier(0.07, 0.8, 0.16, 1);
+  z-index: -1;
+  top: 30%;
+  right: 10%;
+}
+
+.dark-mode .glassmorphism {
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.dark-mode .bg-blue-100 {
+  background: linear-gradient(135deg, #1a2236 0%, #151e2e 100%);
+  border: 1px solid rgba(77, 123, 255, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.dark-mode .bg-white {
+  background-color: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: whitesmoke;
+}
+
+.dark-mode .text-gray-600 {
+  color: #bbc5f0;
+}
+
+.dark-mode .text-gray-900 {
+  color: #f3f4f6;
+}
+
+.dark-mode .border-gray-300 {
+  border-color: #4a4a5d;
+}
+
+.dark-mode .bg-gray-100 {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dark-mode .title-text {
+  background: linear-gradient(45deg, #6d28d9, #8b5cf6, #a78bfa, #6d28d9);
+  background-size: 300% 300%;
+}
+
+.dark-mode #particleCanvas {
+  opacity: 0.25;
+}
+
+.dark-mode button {
+  background: linear-gradient(135deg, #ff6ec4, #7873f5);
+  transition: all 0.3s ease;
+}
+
+
+.dark-mode button:hover {
+  transform: scale(1.05);
+  background: linear-gradient(135deg, #ff8fce, #9c96ff);
+  box-shadow: 0 4px 12px rgba(255, 110, 196, 0.3);
+}
+
+.dark-mode input[type="range"]::-webkit-slider-thumb {
+  background: var(--primary-color);
+}
+
+.dark-mode input[type="range"] {
+  background: var(--gray-300);
+}
+
+@keyframes move2 {
+  from {
+    transform: translate(-50px, -80px) rotate(-60deg);
+    border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+  }
+
+  to {
+    transform: translate(100px, 100px) rotate(-10deg);
+    border-radius: 70% 30% 30% 70% / 70% 70% 30% 30%;
+  }
+}
+
+@keyframes move {
+  from {
+    transform: translate(-100px, -50px) rotate(-90deg);
+    border-radius: 24% 76% 35% 65% / 27% 36% 64% 73%;
+  }
+
+  to {
+    transform: translate(500px, 100px) rotate(-10deg);
+    border-radius: 76% 24% 33% 67% / 68% 55% 45% 32%;
+  }
+}
+
+/* Tooltips */
+[title]:not([title=""]):hover:after {
+  content: attr(title);
+  position: absolute;
+  background: var(--gray-800);
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  z-index: 10;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-8px);
+  pointer-events: none;
+  opacity: 0;
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+.dark-mode .glassmorphism:hover {
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.2);
+}
+
+.title-container {
+  position: relative;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+/* Logo animation */
+.text-blue-800 {
+  background: linear-gradient(45deg, #1e40af, #3b82f6, #1e40af);
+  background-size: 200% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: gradientText 3s ease infinite;
+}
+
+@keyframes gradientText {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes gradientFlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes twinkle {
+  0% { opacity: 0; transform: scale(0.5); }
+  50% { opacity: 0.8; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.5); }
+}
+
+#particleCanvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  opacity: 0.5;
+}
+
+.dark-mode #particleCanvas {
+  opacity: 0.3;
+}
+
+/* Progressive enhancement for modern browsers */
+@supports (backdrop-filter: blur(4px)) {
+  #colorModal {
+    background-color: rgba(0, 0, 0, 0.3);
+  }
+
+  .bg-white {
+    backdrop-filter: blur(20px);
+  }
+}
+
+/* Improvements for controls in dark mode */
+.dark-mode input[type="number"],
+.dark-mode input[type="text"],
+.dark-mode select {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: inherit;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.dark-mode input[type="number"]:focus,
+.dark-mode input[type="text"]:focus,
+.dark-mode select:focus {
+  border-color: var(--primary-light);
+  box-shadow: 0 0 0 2px rgba(77, 123, 255, 0.25);
+}
+
+/* Sidebar styles - moved from HTML */
+.dark-mode .sidebar {
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 0 1rem 1rem 0;
+}
+
+.dark-mode .sidebar h1 {
+  color: whitesmoke;
+  text-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+.dark-mode .sidebar button {
+  background: transparent;
+  color: whitesmoke;
+  transition: all 0.3s ease;
+  border-radius: 0.5rem;
+}
+
+.dark-mode .sidebar button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateX(5px);
+}
+
+.dark-mode .sidebar-header {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 0.5rem;
+}
+
+.dark-mode #themeToggle {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: whitesmoke;
+}
