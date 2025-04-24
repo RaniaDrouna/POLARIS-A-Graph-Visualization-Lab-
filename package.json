@@ -4,7 +4,7 @@
   "description": "A modern application for visualizing antenna radiation patterns in 2D and 3D",
   "main": "eel-electron.js",
   "scripts": {
-    "start": "python splash.py",
+    "start": "python main.py",
     "dev": "electron . --dev",
     "build": "electron-builder",
     "pack": "electron-builder --dir"
