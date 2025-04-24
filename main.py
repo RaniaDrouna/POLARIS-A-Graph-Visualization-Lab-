@@ -379,3 +379,4 @@ if __name__ == '__main__':
     port = 8000
     # Change mode to 'custom' instead of 'electron'
     eel.start('index.html', mode='electron', host='localhost', port=port, block=True)
+
