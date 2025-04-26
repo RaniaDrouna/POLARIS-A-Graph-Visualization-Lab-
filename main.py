@@ -64,7 +64,7 @@ def charger_fichiers(file_list):
     return f"{len(fichiers)} file(s) loaded."
 
 
-# In main.py, add a new function to get statistics
+# function to get statistics
 @eel.expose
 def get_graph_stats():
     """Get statistics about the currently loaded data."""
@@ -340,7 +340,6 @@ def reset_application():
     return "Application reset."
 
 
-# In main.py, add this new function
 @eel.expose
 def get_data_preview(file_path):
     """Get a preview summary of the data in a file."""
@@ -368,7 +367,6 @@ def afficher_html():
     return "HTML view displayed."
 
 
-# Change this at the end of main.py
 if __name__ == '__main__':
     # Create assets directory if it doesn't exist
     if not os.path.exists('web/assets'):
