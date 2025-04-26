@@ -1,22 +1,19 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-// Execute code when the document is loaded
-window.addEventListener('DOMContentLoaded', () => {
-  // Add any custom initialization here
-  console.log('Preload script loaded');
-  
-  // Add version information to the UI
-  const appVersion = '1.0.0'; // This should match your package.json
-  
-  // Add a small version indicator in the bottom corner
-  const versionElement = document.createElement('div');
-  versionElement.className = 'fixed bottom-1 right-2 text-xs text-gray-500';
-  versionElement.textContent = `Polaris v${appVersion}`;
-  document.body.appendChild(versionElement);
-  
-  // Add modern UI enhancements
-  enhanceUserInterface();
-});
+// Define the launchApp function
+let isLaunching = false;
+
+function launchApp() {
+  if (isLaunching) return;
+  isLaunching = true;
+
+  // Add a transition effect
+  document.body.classList.add('fade-out');
+
+  setTimeout(() => {
+    window.electronAPI.send('launch-main-app');
+  }, 300); // Match this with your CSS transition duration
+}
 
 // Add modern UI touches and animations
 function enhanceUserInterface() {
@@ -29,7 +26,7 @@ function enhanceUserInterface() {
       }, 200);
     });
   });
-  
+
   // Add tooltips for controls if they don't exist
   const tooltips = [
     { selector: '#loadFilesBtn', text: 'Select antenna data files to visualize' },
@@ -39,14 +36,14 @@ function enhanceUserInterface() {
     { selector: '#toggle3dBtn', text: 'Switch between 2D and 3D visualization' },
     { selector: '#showHtmlBtn', text: 'Show HTML report view' }
   ];
-  
+
   tooltips.forEach(tooltip => {
     const element = document.querySelector(tooltip.selector);
     if (element && !element.getAttribute('title')) {
       element.setAttribute('title', tooltip.text);
     }
   });
-  
+
   // Add keyboard shortcuts
   document.addEventListener('keydown', (e) => {
     // Ctrl+G or Cmd+G to generate graph
@@ -57,7 +54,7 @@ function enhanceUserInterface() {
         generateBtn.click();
       }
     }
-    
+
     // Ctrl+O or Cmd+O to load files
     if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
       e.preventDefault();
@@ -66,7 +63,7 @@ function enhanceUserInterface() {
         loadFilesBtn.click();
       }
     }
-    
+
     // Ctrl+S or Cmd+S to save graph
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
       e.preventDefault();
@@ -75,7 +72,7 @@ function enhanceUserInterface() {
         saveGraphBtn.click();
       }
     }
-    
+
     // Ctrl+R or Cmd+R to reset (only with Shift to avoid browser refresh)
     if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'R') {
       e.preventDefault();
@@ -84,7 +81,7 @@ function enhanceUserInterface() {
         resetBtn.click();
       }
     }
-    
+
     // Space to toggle 3D/2D
     if (e.key === ' ' && document.activeElement.tagName !== 'INPUT') {
       e.preventDefault();
@@ -94,13 +91,13 @@ function enhanceUserInterface() {
       }
     }
   });
-  
+
   // Add a welcome message that fades out after 3 seconds
   const welcomeMessage = document.createElement('div');
   welcomeMessage.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white py-2 px-4 rounded-lg shadow-lg transition-opacity duration-500';
   welcomeMessage.innerHTML = 'Welcome to Polaris Antenna Visualizer';
   document.body.appendChild(welcomeMessage);
-  
+
   setTimeout(() => {
     welcomeMessage.classList.add('opacity-0');
     setTimeout(() => {
@@ -109,11 +106,52 @@ function enhanceUserInterface() {
   }, 3000);
 }
 
-// Expose protected methods that allow the renderer process to use
-// the ipcRenderer without exposing the entire object
+// Execute code when the document is loaded
+window.addEventListener('DOMContentLoaded', () => {
+  // Add any custom initialization here
+  console.log('Preload script loaded');
+
+  // Add version information to the UI
+  const appVersion = '1.0.0'; // This should match your package.json
+
+  // Add a small version indicator in the bottom corner
+  const versionElement = document.createElement('div');
+  versionElement.className = 'fixed bottom-1 right-2 text-xs text-gray-500';
+  versionElement.textContent = `Polaris v${appVersion}`;
+  document.body.appendChild(versionElement);
+
+  const launchButton = document.getElementById('launchButton');
+  if (launchButton) {
+    launchButton.addEventListener('click', () => {
+      launchApp();
+    });
+  }
+
+  // Auto-launch after a timeout if desired
+if (!window.location.href.includes('index.html')) {
+  setTimeout(() => {
+    launchApp();
+  }, 5000); // Only auto-launch from splash screen
+} // Auto-launch after 5 seconds
+
+  // Add modern UI enhancements
+  enhanceUserInterface();
+});
+
+// Expose protected methods to the splash screen
 contextBridge.exposeInMainWorld('electronAPI', {
-  // Add any API functions you want to expose to the renderer here
-  // For example:
+  send: (channel, data) => {
+    let validChannels = ['launch-main-app'];
+    if (validChannels.includes(channel)) {
+      ipcRenderer.send(channel, data);
+    }
+  },
+  receive: (channel, func) => {
+    let validChannels = ['message-from-main'];
+    if (validChannels.includes(channel)) {
+      ipcRenderer.on(channel, (event, ...args) => func(...args));
+    }
+  },
   getAppVersion: () => '1.0.0',
   getPlatform: () => process.platform
 });
