@@ -420,7 +420,7 @@ function isLightColor(color) {
   return lightColors.includes(color);
 }
 
-// In script.js, add a new function to update the stats dashboard
+
 async function updateStatsDashboard() {
   try {
     const stats = await eel.get_graph_stats()();
