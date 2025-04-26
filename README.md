@@ -1,4 +1,4 @@
-# POLARIS : A Graph Visualization Lab
+# POLARIS : An Antenna Visualization Lab
 Polaris is a modern desktop application for visualizing antenna radiation patterns in both 2D and 3D. Built with Electron, Python, and Eel, it provides an intuitive interface for scientists, engineers, and students to analyze and visualize antenna data.
 
 ## Features
