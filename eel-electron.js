@@ -158,7 +158,6 @@ function createMenu() {
   Menu.setApplicationMenu(menu);
 }
 
-// In the startPythonBackend function
 function startPythonBackend() {
   pythonPath = getPythonPath();
   const script = path.join(__dirname, 'main.py');
