@@ -60,6 +60,8 @@ function getPythonPath() {
 // Modify the createSplashWindow function
 // In eel-electron.js, update the createSplashWindow and createMainWindow functions:
 
+let isMainWindowCreated = false;
+
 function createMainWindow() {
     if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.focus();
@@ -95,8 +97,26 @@ function createMainWindow() {
     }
   });
 
-  mainWindow.on('closed', () => {
-    mainWindow = null;
+  mainWindow.webContents.on('did-finish-load', () => {
+    if (mainWindow.webContents.getURL().includes('splash.html')) {
+      // Start checking for backend readiness
+      checkBackendReady();
+    }
+  });
+}
+
+function checkBackendReady() {
+  const http = require('http');
+  const req = http.get('http://localhost:8000', (res) => {
+    if (res.statusCode === 200) {
+      // Backend is ready, signal splash screen to transition
+      mainWindow.webContents.send('backend-ready');
+    }
+  });
+
+  req.on('error', () => {
+    // Retry after delay
+    setTimeout(checkBackendReady, 500);
   });
 }
 
@@ -119,8 +139,6 @@ function checkPortAvailable(port, callback) {
   server.listen(port);
 }
 
-app.commandLine.appendSwitch('disable-gpu');
-app.commandLine.appendSwitch('disable-gpu-compositing')
 
 // Modify the app.whenReady() event handler
 app.whenReady().then(() => {
