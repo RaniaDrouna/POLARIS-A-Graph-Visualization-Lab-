@@ -4,31 +4,18 @@
   <meta charset="UTF-8">
   <title>Polaris</title>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./splashStyle.css">
+  <link rel="stylesheet" href="./splash.css">
+  <script src="/eel.js"></script>
 </head>
 <body>
   <div class="container">
     <div class="card">
       <h1 class="title">Polaris</h1>
-      <p class="subtitle">A graph visualization lab</p>
-      <button class="btn" onclick="eel.launch_main_app()">Get Started</button>
+      <p class="subtitle">Visualize 2D & 3D antenna patterns. Customize. Compare. Export</p>
+      <button class="btn">Get Started</button> <!-- Changed to use class instead of onclick -->
     </div>
     <div class="blob"></div>
   </div>
-<script>
-  document.addEventListener("DOMContentLoaded", () => {
-    console.log("✅ DOM ready");
-
-    if (typeof eel === "undefined") {
-      console.error("❌ Eel is NOT available");
-    } else {
-      console.log("✅ Eel is connected");
-      document.getElementById("startBtn").addEventListener("click", () => {
-        console.log("🟢 Button clicked — calling Python");
-        eel.launch_main_app();
-      });
-    }
-  });
-</script>
+  <script src="splash.js"></script>
 </body>
 </html>
