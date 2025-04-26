@@ -87,6 +87,8 @@ body {
     inset 300px 300px 0 0px #2b86c5;
 }
 
+.fade-out { opacity: 0; transition: opacity 0.3s ease; }
+
 @-webkit-keyframes move {
   from {
     transform: translate(-100px, -50px) rotate(-90deg);
