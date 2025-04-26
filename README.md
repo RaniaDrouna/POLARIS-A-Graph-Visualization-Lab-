@@ -22,10 +22,10 @@ pip (Python package manager)
 
 ## Set Up Guide 
 in your terminal : 
-- install python dependencies by running the following command <pip install eel numpy matplotlib scipy> 
-- install Node.js Dependencies <npm install>
+- install python dependencies by running the following command < pip install eel numpy matplotlib scipy > 
+- install Node.js Dependencies < npm install >
 - install electron <npm init -y> and <npm install electron --save-dev>
-- the app should launch by running this command <python main.py> in your terminal
+- the app should launch by running this command < python main.py > in your terminal
 
 ## Up coming updates 
 injecting a splash screen 
