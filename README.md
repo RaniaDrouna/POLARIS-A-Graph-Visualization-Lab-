@@ -27,7 +27,6 @@ in your terminal :
 - install electron <npm init -y> and <npm install electron --save-dev>
 - the app should launch by running this command < python main.py > in your terminal
 
-## Up coming updates 
-injecting a splash screen 
+
 
 ### The app will soon be available as an execuatable
