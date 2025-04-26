@@ -1,380 +1,391 @@
-# main.py
-import os
-import sys
-import eel
-import numpy as np
-import matplotlib
-
-matplotlib.use('Agg')  # Use non-interactive backend
-import matplotlib.pyplot as plt
-from scipy.interpolate import griddata
-import tkinter as tk
-from tkinter import filedialog
-import random
-import base64
-import string
-import time
-
-# Initialize Eel
-eel.init('web')
-
-# Global state
-fichiers = []
-couleurs = []
-offset_value = 0.0
-offset_manual = False
-offset_auto = True
-scale_factor = 1.0
-type_tracage = 'solid'
-epaisseur_ligne = 2.0
-est_3d = False
-azimuth = 45.0
-elevation = 30.0
-
-
-def generate_random_id():
-    """Generate a random identifier to prevent image caching."""
-    return ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
-
-
-@eel.expose
-def select_files():
-    """Open file dialog and return selected file paths."""
-    # Create a hidden tkinter root window
-    root = tk.Tk()
-    root.withdraw()
-
-    # Show file dialog
-    file_paths = filedialog.askopenfilenames(
-        title="Select antenna data files",
-        filetypes=[("Text Files", "*.txt")]
-    )
-
-    # Convert to a list and return
-    return list(file_paths)
-
-
-@eel.expose
-def charger_fichiers(file_list):
-    """Load the selected files."""
-    global fichiers
-    if not file_list:
-        return "No files selected."
-    fichiers = file_list
-    return f"{len(fichiers)} file(s) loaded."
-
-
-# function to get statistics
-@eel.expose
-def get_graph_stats():
-    """Get statistics about the currently loaded data."""
-    if not fichiers:
-        return {"error": "No files loaded"}
-
-    try:
-        stats = []
-
-        for i, fichier in enumerate(fichiers):
-            with open(fichier, "r") as f:
-                values = [float(l.strip()) for l in f if l.strip()]
-
-            # Apply offsets as needed
-            if offset_auto:
-                values = appliquer_offset_rotation(values)
-            elif offset_manual:
-                values = appliquer_offset(values)
-
-            # Calculate statistics
-            max_value = max(values)
-            max_index = values.index(max_value)
-            # Calculate angle in degrees
-            angle_degrees = (max_index / len(values)) * 360
-
-            stats.append({
-                "file": os.path.basename(fichier),
-                "max_gain": max_value,
-                "peak_angle": angle_degrees
-            })
-
-        return stats
-    except Exception as e:
-        return {"error": str(e)}
-
-@eel.expose
-def ajouter_couleur(couleur):
-    """Add a color to the list."""
-    global couleurs
-    couleurs.append(couleur)
-    return couleurs
-
-
-@eel.expose
-def supprimer_couleur(index):
-    """Remove a color from the list."""
-    global couleurs
-    try:
-        couleurs.pop(index)
-    except IndexError:
-        pass
-    return couleurs
-
-
-@eel.expose
-def set_params(params):
-    """Set plotting parameters."""
-    global offset_value, offset_manual, offset_auto, scale_factor, type_tracage, epaisseur_ligne, est_3d
-    global azimuth, elevation  # Add these globals
-
-    offset_value = float(params['offset_value'])
-    offset_manual = params['offset_manual']
-    offset_auto = params['offset_auto']
-    scale_factor = float(params['scale_factor'])
-    type_tracage = params['type_tracage']
-    epaisseur_ligne = float(params['epaisseur_ligne'])
-    est_3d = params['est_3d']
-
-    # Add these lines
-    if 'azimuth' in params:
-        azimuth = float(params['azimuth'])
-    if 'elevation' in params:
-        elevation = float(params['elevation'])
-
-    return "Parameters updated."
-
-@eel.expose
-def generer_graphique():
-    """Generate and save the plot."""
-    if not fichiers:
-        return "Error: No files loaded."
-
-    try:
-        # Create figure with appropriate size
-        fig = plt.figure(figsize=(10, 8), dpi=100)
-
-        # Set up the axis with the right projection
-        if est_3d:
-            ax = fig.add_subplot(111, projection='3d')
-        else:
-            ax = fig.add_subplot(111, projection='polar')
-
-        default_colors = ["red", "blue", "green", "orange", "purple"]
-
-        # Plot each file
-        for i, fichier in enumerate(fichiers):
-            try:
-                # Read the data from the file
-                with open(fichier, "r") as f:
-                    valeurs = [float(l.strip()) for l in f if l.strip()]
-
-                # Apply offset if necessary
-                if offset_auto:
-                    valeurs = appliquer_offset_rotation(valeurs)
-                elif offset_manual:
-                    valeurs = appliquer_offset(valeurs)
-
-                # Get the color (use default if not enough colors defined)
-                couleur = couleurs[i] if i < len(couleurs) else default_colors[i % len(default_colors)]
-
-                # Create appropriate plot based on 2D or 3D mode
-                if est_3d:
-                    tracer_polaire_3d(ax, valeurs, couleur, f"Graph {i + 1}")
-                else:
-                    tracer_polaire_2d(ax, valeurs, couleur, f"Graph {i + 1}")
-
-            except Exception as e:
-                return f"Error processing file {fichier}: {str(e)}"
-
-        # Add legend and labels
-        ax.legend()
-
-        # Ensure the assets directory exists
-        os.makedirs('web/assets', exist_ok=True)
-
-        # Save the figure
-        filename = f"graph_{generate_random_id()}.png"
-        filepath = os.path.join("web", "assets", filename)
-        fig.savefig(filepath, bbox_inches='tight')
-        plt.close(fig)
-
-        return f"assets/{filename}"
-
-    except Exception as e:
-        return f"Error generating graph: {str(e)}"
-
-
-def appliquer_offset(valeurs):
-    """Apply manual offset to values."""
-    return [v + offset_value for v in valeurs]
-
-
-def appliquer_offset_rotation(valeurs):
-    """Apply automatic offset and rotation to values."""
-    if not valeurs:
-        return []
-
-    val_max = max(valeurs)  # Find maximum value
-    offset = -val_max  # Calculate offset to center the graph
-
-    valeurs_offset = [v + offset for v in valeurs]  # Apply offset to all values
-
-    # For rotation, we want the new max value to always be at 0°
-    idx_max = valeurs_offset.index(0)  # Find where the max value became 0
-    valeurs_offset = valeurs_offset[idx_max:] + valeurs_offset[:idx_max]  # Perform rotation
-
-    return valeurs_offset
-
-
-def tracer_polaire_2d(ax, valeurs, couleur, label):
-    """Create a 2D polar plot."""
-    theta = np.linspace(0, 2 * np.pi, len(valeurs))
-    r = np.array(valeurs) * scale_factor
-    ax.plot(theta, r, color=couleur, label=label, linestyle=type_tracage, linewidth=epaisseur_ligne)
-
-
-def tracer_polaire_3d(ax, valeurs, couleur, label):
-    """Create a 3D surface plot from polar data."""
-    # Set the view angles
-    ax.view_init(elev=elevation, azim=azimuth)
-
-    # Rest of the function remains the same
-    angles = np.linspace(0, 2 * np.pi, len(valeurs))
-    r = np.array(valeurs) * scale_factor
-
-    # Convert polar to cartesian coordinates
-    x = r * np.cos(angles)
-    y = r * np.sin(angles)
-    z = r
-
-    # Create a regular grid for interpolation
-    grid_x, grid_y = np.mgrid[min(x):max(x):100j, min(y):max(y):100j]
-    grid_z = griddata((x, y), z, (grid_x, grid_y), method='cubic')
-
-    # Display the smoothed surface
-    surf = ax.plot_surface(grid_x, grid_y, grid_z, cmap='plasma', edgecolor='none', alpha=0.9)
-    ax.set_title(label)
-
-    # Add a color bar
-    plt.colorbar(surf, ax=ax, shrink=0.5, aspect=5)
-
-@eel.expose
-def save_graph():
-    """Save the current graph to a file."""
-    try:
-        # Create a hidden tkinter root window
-        root = tk.Tk()
-        root.withdraw()
-
-        # Show save file dialog
-        file_path = filedialog.asksaveasfilename(
-            defaultextension=".png",
-            filetypes=[("PNG", "*.png"), ("JPEG", "*.jpg")]
-        )
-
-        if not file_path:
-            return "Save cancelled."
-
-        # Get the most recently generated graph
-        latest_graph = None
-        assets_dir = os.path.join("web", "assets")
-        if os.path.exists(assets_dir):
-            graph_files = [f for f in os.listdir(assets_dir) if f.startswith("graph_") and f.endswith(".png")]
-            if graph_files:
-                # Sort by modification time (most recent first)
-                graph_files.sort(key=lambda f: os.path.getmtime(os.path.join(assets_dir, f)), reverse=True)
-                latest_graph = os.path.join(assets_dir, graph_files[0])
-
-        if not latest_graph:
-            return "No graph available to save."
-
-        # Save the graph
-        fig = plt.figure(figsize=(10, 8), dpi=100)
-
-        # Set up the axis with the right projection
-        if est_3d:
-            ax = fig.add_subplot(111, projection='3d')
-        else:
-            ax = fig.add_subplot(111, projection='polar')
-
-        # Recreate the plot for the selected save location
-        for i, fichier in enumerate(fichiers):
-            with open(fichier, "r") as f:
-                valeurs = [float(l.strip()) for l in f if l.strip()]
-
-            if offset_auto:
-                valeurs = appliquer_offset_rotation(valeurs)
-            elif offset_manual:
-                valeurs = appliquer_offset(valeurs)
-
-            couleur = couleurs[i] if i < len(couleurs) else ["red", "blue", "green", "orange", "purple"][i % 5]
-
-            if est_3d:
-                tracer_polaire_3d(ax, valeurs, couleur, f"Graph {i + 1}")
-            else:
-                tracer_polaire_2d(ax, valeurs, couleur, f"Graph {i + 1}")
-
-        ax.legend()
-        fig.savefig(file_path, bbox_inches='tight')
-        plt.close(fig)
-
-        return f"Graph saved to {file_path}"
-
-    except Exception as e:
-        return f"Error saving graph: {str(e)}"
-
-
-@eel.expose
-def reset_application():
-    """Reset all application state."""
-    global fichiers, couleurs, offset_value, offset_manual, offset_auto, scale_factor, type_tracage, epaisseur_ligne, est_3d
-
-    fichiers = []
-    couleurs = []
-    offset_value = 0.0
-    offset_manual = False
-    offset_auto = True
-    scale_factor = 1.0
-    type_tracage = 'solid'
-    epaisseur_ligne = 2.0
-    est_3d = False
-
-    return "Application reset."
-
-
-@eel.expose
-def get_data_preview(file_path):
-    """Get a preview summary of the data in a file."""
-    try:
-        with open(file_path, "r") as f:
-            values = [float(l.strip()) for l in f if l.strip()]
-
-        if not values:
-            return {"error": "No valid data in file"}
-
-        return {
-            "file_name": os.path.basename(file_path),
-            "points": len(values),
-            "min": min(values),
-            "max": max(values),
-            "mean": sum(values) / len(values),
-            "sample": values[:5] + (["..."] if len(values) > 5 else [])
+const { app, BrowserWindow, dialog, ipcMain, Menu, shell } = require('electron');
+const path = require('path');
+const { spawn } = require('child_process');
+const fs = require('fs');
+const log = require('electron-log');
+const iconPath = path.join(__dirname, 'build', process.platform === 'win32' ? 'icon.ico' : 'icon.png');
+const gotTheLock = app.requestSingleInstanceLock();
+
+
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    // Focus on the existing window if someone tries to run a second instance
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
+}
+
+// Configure logging
+log.transports.file.level = 'info';
+log.info('Application starting...');
+
+// Global references
+let mainWindow = null;
+let pyProc = null;
+let pythonPath = 'python'; // Default python command
+let isMainAppLaunched = false;
+let isCreatingMainWindow = false;
+
+// In eel-electron.js, modify the createWindow function and add new functions
+
+
+
+// Check if we're in development mode
+const isDev = process.argv.includes('--dev');
+
+// Find the best Python interpreter
+function getPythonPath() {
+  const possiblePaths = ['python', 'python3', 'py'];
+
+  for (const pythonExec of possiblePaths) {
+    try {
+      const result = require('child_process').spawnSync(pythonExec, ['-c', 'print("Python found")']);
+      if (result.status === 0) {
+        log.info(`Using Python interpreter: ${pythonExec}`);
+        return pythonExec;
+      }
+    } catch (e) {
+      // Continue to next path
+    }
+  }
+
+  log.warn('No Python interpreter found in PATH, defaulting to "python"');
+  return 'python';
+}
+
+// Modify the createSplashWindow function
+// In eel-electron.js, update the createSplashWindow and createMainWindow functions:
+
+function createMainWindow() {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.focus();
+    return;
+  }
+  isCreatingMainWindow = true;
+
+  mainWindow = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    minWidth: 1200,
+    minHeight: 800,
+    icon: fs.existsSync(iconPath) ? iconPath : null,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js')
+    },
+    show: false,
+    backgroundColor: '#f0f9ff',
+    frame: true, // Ensure window frame is visible
+    titleBarStyle: 'default' // Standard title bar
+  });
+
+  // Load splash screen first
+  mainWindow.loadURL('http://localhost:8000/splash.html');
+
+  mainWindow.once('ready-to-show', () => {
+    isCreatingMainWindow = false;
+    mainWindow.show();
+    if (isDev) {
+      mainWindow.webContents.openDevTools();
+    }
+  });
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
+}
+
+function checkPortAvailable(port, callback) {
+  const net = require('net');
+  const server = net.createServer();
+
+  server.once('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      log.warn(`Port ${port} is already in use`);
+      callback(false);
+    }
+  });
+
+  server.once('listening', () => {
+    server.close();
+    callback(true);
+  });
+
+  server.listen(port);
+}
+
+app.commandLine.appendSwitch('disable-gpu');
+app.commandLine.appendSwitch('disable-gpu-compositing')
+
+// Modify the app.whenReady() event handler
+app.whenReady().then(() => {
+  log.info('Electron app ready');
+
+  let serverCheckAttempted = false; // Add this flag
+
+checkPortAvailable(8000, (available) => {
+  if (available) {
+    checkServerRunning();
+  } else {
+    dialog.showErrorBox(
+      'Port Error',
+      'Port 8000 is already in use. Please close any other instances of the application and try again.'
+    );
+    app.quit();
+  }
+});
+
+const checkServerRunning = () => {
+  const http = require('http');
+  const options = {
+    host: 'localhost',
+    port: 8000,
+    path: '/',
+    timeout: 2000
+  };
+
+  const req = http.get(options, (res) => {
+    log.info(`Eel server is running, status: ${res.statusCode}`);
+    createMainWindow(); // Changed from createSplashWindow to createMainWindow
+  });
+
+  req.on('error', (err) => {
+    log.info('Eel server not detected, starting Python backend');
+    startPythonBackend();
+
+    // Wait a bit then try to create the main window
+    setTimeout(() => {
+      createMainWindow(); // Changed from createSplashWindow to createMainWindow
+    }, 3000);
+  });
+};
+
+  checkServerRunning();
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      serverCheckAttempted = false; // Reset the flag
+      checkServerRunning();
+    }
+  });
+});
+
+// Add this IPC handler to receive the launch command from splash screen
+// Add this at the top
+
+// Modify the IPC handler
+ipcMain.on('launch-main-app', () => {
+  if (isMainAppLaunched) return;
+  isMainAppLaunched = true;
+
+  log.info('Received launch-main-app command');
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.loadURL('http://localhost:8000/index.html');
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+    createMenu();
+  }
+});
+
+// Create application menu
+function createMenu() {
+  const template = [
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'Load Files',
+          accelerator: 'CmdOrCtrl+O',
+          click: () => {
+            mainWindow.webContents.executeJavaScript('document.getElementById("loadFilesBtn").click();');
+          }
+        },
+        {
+          label: 'Save Graph',
+          accelerator: 'CmdOrCtrl+S',
+          click: () => {
+            mainWindow.webContents.executeJavaScript('document.getElementById("saveGraphBtn").click();');
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Reset Application',
+          click: () => {
+            mainWindow.webContents.executeJavaScript('document.getElementById("resetBtn").click();');
+          }
+        },
+        { type: 'separator' },
+        { role: 'quit' }
+      ]
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'forceReload' },
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' }
+      ]
+    },
+    {
+      label: 'Help',
+      submenu: [
+        {
+          label: 'About Polaris Antenna Visualizer',
+          click: () => {
+            dialog.showMessageBox(mainWindow, {
+              type: 'info',
+              title: 'About Polaris Antenna Visualizer',
+              message: 'Polaris Antenna Visualizer v1.0.0',
+              detail: 'A modern application for visualizing antenna radiation patterns in 2D and 3D.\n\nCreated with Electron, Python, and Eel.',
+              buttons: ['OK'],
+              icon: path.join(__dirname, 'build', process.platform === 'win32' ? 'icon.ico' : 'icon.png')
+            });
+          }
+        },
+        {
+          label: 'Documentation',
+          click: async () => {
+            await shell.openExternal('https://github.com/yourusername/polaris-antenna-visualizer/wiki');
+          }
         }
-    except Exception as e:
-        return {"error": f"Error processing file: {str(e)}"}
+      ]
+    }
+  ];
 
-@eel.expose
-def afficher_html():
-    """Show HTML information."""
-    return "HTML view displayed."
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+}
 
+// In the startPythonBackend function
+function startPythonBackend() {
+  pythonPath = getPythonPath();
+  const script = path.join(__dirname, 'main.py');
+  // In startPythonBackend function, add this check at the beginning:
+  if (pyProc && !pyProc.killed) {
+    log.info('Python backend already running');
+    return;
+  }
 
-if __name__ == '__main__':
-    # Create assets directory if it doesn't exist
-    if not os.path.exists('web/assets'):
-        os.makedirs('web/assets')
+  log.info(`Starting Python backend: ${pythonPath} ${script}`);
 
-    # Don't start electron from Python side
-    # Just start the Eel web server
-    port = 8000
-    # Change mode to 'custom' instead of 'electron'
-    eel.start('index.html', mode='electron', host='localhost', port=port, block=True)
+  // Use environment variables to signal to Python we're in an Electron app
+  const env = { ...process.env, ELECTRON_RUN: '1' };
+
+  pyProc = spawn(pythonPath, [script], { env });
+
+  pyProc.stdout.on('data', (data) => {
+    log.info(`Python [stdout]: ${data}`);
+  });
+
+  pyProc.stderr.on('data', (data) => {
+    log.error(`Python [stderr]: ${data}`);
+
+    // Check if Eel is already running (port in use error)
+    if (data.toString().includes('OSError: [Errno 48]') ||
+        data.toString().includes('Address already in use')) {
+      log.info('Eel server seems to be already running, connecting to existing instance');
+      // If Eel is running, create the window right away
+      createSplashWindow();
+    }
+  });
+
+  pyProc.on('close', (code) => {
+    log.info(`Python backend exited with code ${code}`);
+    if (code !== 0 && mainWindow) {
+      dialog.showErrorBox(
+        'Python Backend Error',
+        `The Python backend process exited unexpectedly with code ${code}. The application may not function correctly.`
+      );
+    }
+  });
+
+  pyProc.on('error', (err) => {
+    log.error(`Failed to start Python process: ${err}`);
+    dialog.showErrorBox(
+      'Python Start Error',
+      `Failed to start Python backend: ${err.message}`
+    );
+    app.quit();
+  });
+}
+function stopPythonBackend() {
+  if (pyProc) {
+    log.info('Stopping Python backend...');
+
+    // Try graceful shutdown first
+    if (process.platform === 'win32') {
+      try {
+        spawn('taskkill', ['/pid', pyProc.pid, '/f', '/t']);
+      } catch (error) {
+        log.error(`Error stopping Python process: ${error}`);
+      }
+    } else {
+      try {
+        pyProc.kill('SIGTERM');
+        // Give some time for the process to terminate
+        setTimeout(() => {
+          if (pyProc) {
+            // Force kill if it didn't terminate
+            pyProc.kill('SIGKILL');
+          }
+        }, 1000);
+      } catch (error) {
+        log.error(`Error stopping Python process: ${error}`);
+      }
+    }
+
+    pyProc = null;
+  }
+}
+
+// Handle all windows closed
+app.on('window-all-closed', () => {
+  log.info('All windows closed');
+  stopPythonBackend();
+
+  // On macOS, applications keep running until the user quits explicitly
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
+});
+
+// Add this before app.on('will-quit')
+app.on('before-quit', () => {
+  log.info('App is about to quit');
+  app.isQuitting = true;
+});
+
+// Handle app will quit
+app.on('will-quit', () => {
+  log.info('Application will quit');
+  // Destroy all windows first
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.destroy();
+  }
+  // Then stop Python backend
+  stopPythonBackend();
+});
+
+// Error handling
+process.on('uncaughtException', (error) => {
+  log.error('Uncaught exception:', error);
+  dialog.showErrorBox(
+    'Error in Polaris Antenna Visualizer',
+    `An unexpected error occurred:\n${error.message}\n\nThe application will now close.`
+  );
+
+  stopPythonBackend();
+  app.quit();
+});
 
