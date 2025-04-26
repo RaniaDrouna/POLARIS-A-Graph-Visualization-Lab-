@@ -4,6 +4,9 @@ let is3D = false;
 
 // DOM Elements
 document.addEventListener('DOMContentLoaded', () => {
+  // When everything is ready
+  window.addEventListener('load', () => {
+});
   // Initialize event listeners
   document.getElementById('loadFilesBtn').addEventListener('click', loadFiles);
   document.getElementById('resetBtn').addEventListener('click', resetApplication);
@@ -532,4 +535,3 @@ async function addCustomColor() {
 function showMessage(message) {
   alert(message);
 }
-
