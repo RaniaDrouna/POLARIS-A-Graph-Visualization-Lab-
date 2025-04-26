@@ -3,17 +3,43 @@ const { contextBridge, ipcRenderer } = require('electron');
 // Define the launchApp function
 let isLaunching = false;
 
+// Make sure the launchApp function is correctly triggering the IPC event
 function launchApp() {
   if (isLaunching) return;
   isLaunching = true;
+
+  console.log('Launching main app...');
 
   // Add a transition effect
   document.body.classList.add('fade-out');
 
   setTimeout(() => {
-    window.electronAPI.send('launch-main-app');
-  }, 300); // Match this with your CSS transition duration
+    // Make sure this correctly triggers the IPC event
+    ipcRenderer.send('launch-main-app');
+  }, 300);
 }
+
+// Make sure the launch button is properly connected
+window.addEventListener('DOMContentLoaded', () => {
+  console.log('Preloader script loaded');
+
+  const launchButton = document.getElementById('launchButton');
+  if (launchButton) {
+    console.log('Launch button found, adding click listener');
+    launchButton.addEventListener('click', launchApp);
+  } else {
+    console.log('Launch button not found!');
+  }
+
+  // Auto-launch after a timeout
+  if (!window.location.href.includes('index.html')) {
+    console.log('Setting up auto-launch timer');
+    setTimeout(() => {
+      console.log('Auto-launching main app');
+      launchApp();
+    }, 5000);
+  }
+});
 
 // Add modern UI touches and animations
 function enhanceUserInterface() {
@@ -155,3 +181,4 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getAppVersion: () => '1.0.0',
   getPlatform: () => process.platform
 });
+
