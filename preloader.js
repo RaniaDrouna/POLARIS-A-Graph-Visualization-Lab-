@@ -8,15 +8,7 @@ function launchApp() {
   if (isLaunching) return;
   isLaunching = true;
 
-  console.log('Launching main app...');
-
-  // Add a transition effect
-  document.body.classList.add('fade-out');
-
-  setTimeout(() => {
-    // Make sure this correctly triggers the IPC event
-    ipcRenderer.send('launch-main-app');
-  }, 300);
+  ipcRenderer.send('launch-main-app');
 }
 
 // Make sure the launch button is properly connected
@@ -31,14 +23,8 @@ window.addEventListener('DOMContentLoaded', () => {
     console.log('Launch button not found!');
   }
 
-  // Auto-launch after a timeout
-  if (!window.location.href.includes('index.html')) {
-    console.log('Setting up auto-launch timer');
-    setTimeout(() => {
-      console.log('Auto-launching main app');
-      launchApp();
-    }, 5000);
-  }
+  // Remove auto-launch timer to prevent automatic launching
+  // Now the app will only launch when the button is clicked
 });
 
 // Add modern UI touches and animations
@@ -51,23 +37,6 @@ function enhanceUserInterface() {
         button.classList.remove('opacity-70');
       }, 200);
     });
-  });
-
-  // Add tooltips for controls if they don't exist
-  const tooltips = [
-    { selector: '#loadFilesBtn', text: 'Select antenna data files to visualize' },
-    { selector: '#resetBtn', text: 'Reset the application to its initial state' },
-    { selector: '#generateBtn', text: 'Generate the visualization with current settings' },
-    { selector: '#saveGraphBtn', text: 'Save the current graph as an image' },
-    { selector: '#toggle3dBtn', text: 'Switch between 2D and 3D visualization' },
-    { selector: '#showHtmlBtn', text: 'Show HTML report view' }
-  ];
-
-  tooltips.forEach(tooltip => {
-    const element = document.querySelector(tooltip.selector);
-    if (element && !element.getAttribute('title')) {
-      element.setAttribute('title', tooltip.text);
-    }
   });
 
   // Add keyboard shortcuts
@@ -153,12 +122,22 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Auto-launch after a timeout if desired
-if (!window.location.href.includes('index.html')) {
-  setTimeout(() => {
-    launchApp();
-  }, 5000); // Only auto-launch from splash screen
-} // Auto-launch after 5 seconds
+  // Modify backend-ready event to just update UI instead of auto-launching
+  ipcRenderer.on('backend-ready', () => {
+    console.log('Backend ready, waiting for user to click button');
+    // Update button text or appearance to indicate readiness if desired
+    const launchButton = document.getElementById('launchButton');
+    if (launchButton) {
+      launchButton.textContent = "Get Started";
+      launchButton.disabled = false;
+      launchButton.classList.remove('opacity-50');
+      launchButton.classList.add('animate-pulse');
+      // Stop pulsing after 3 seconds
+      setTimeout(() => {
+        launchButton.classList.remove('animate-pulse');
+      }, 3000);
+    }
+  });
 
   // Add modern UI enhancements
   enhanceUserInterface();
