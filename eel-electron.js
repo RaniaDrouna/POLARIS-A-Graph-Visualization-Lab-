@@ -3,6 +3,21 @@ const path = require('path');
 const { spawn } = require('child_process');
 const fs = require('fs');
 const log = require('electron-log');
+const iconPath = path.join(__dirname, 'build', process.platform === 'win32' ? 'icon.ico' : 'icon.png');
+const gotTheLock = app.requestSingleInstanceLock();
+
+
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    // Focus on the existing window if someone tries to run a second instance
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
+}
 
 // Configure logging
 log.transports.file.level = 'info';
@@ -12,6 +27,12 @@ log.info('Application starting...');
 let mainWindow = null;
 let pyProc = null;
 let pythonPath = 'python'; // Default python command
+let isMainAppLaunched = false;
+let isCreatingMainWindow = false;
+
+// In eel-electron.js, modify the createWindow function and add new functions
+
+
 
 // Check if we're in development mode
 const isDev = process.argv.includes('--dev');
@@ -36,52 +57,140 @@ function getPythonPath() {
   return 'python';
 }
 
-// Create the main application window
-function createWindow() {
-  const iconPath = path.join(__dirname, 'build', process.platform === 'win32' ? 'icon.ico' : 'icon.png');
+// Modify the createSplashWindow function
+// In eel-electron.js, update the createSplashWindow and createMainWindow functions:
+
+function createMainWindow() {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.focus();
+    return;
+  }
+  isCreatingMainWindow = true;
 
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
-    minWidth: 900,
-    minHeight: 600,
+    minWidth: 1200,
+    minHeight: 800,
     icon: fs.existsSync(iconPath) ? iconPath : null,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js')
     },
-    show: false, // Don't show until ready-to-show
-    backgroundColor: '#f0f9ff' // Light blue background matching the app theme
+    show: false,
+    backgroundColor: '#f0f9ff',
+    frame: true, // Ensure window frame is visible
+    titleBarStyle: 'default' // Standard title bar
   });
 
-  // Load app from Eel web server
-  mainWindow.loadURL('http://localhost:8000');
+  // Load splash screen first
+  mainWindow.loadURL('http://localhost:8000/splash.html');
 
-  // Show window when content has loaded
   mainWindow.once('ready-to-show', () => {
+    isCreatingMainWindow = false;
     mainWindow.show();
-
-    // Open DevTools automatically in development mode
     if (isDev) {
       mainWindow.webContents.openDevTools();
     }
   });
 
-// Modify the window closing handler
-mainWindow.on('closed', () => {
-  log.info('Main window closed');
-  // Only stop Python when the app is actually quitting
-  // This prevents stopping Python when window is closed but app still runs (macOS)
-  if (process.platform !== 'darwin' || app.isQuitting) {
-    stopPythonBackend();
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
+}
+
+function checkPortAvailable(port, callback) {
+  const net = require('net');
+  const server = net.createServer();
+
+  server.once('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      log.warn(`Port ${port} is already in use`);
+      callback(false);
+    }
+  });
+
+  server.once('listening', () => {
+    server.close();
+    callback(true);
+  });
+
+  server.listen(port);
+}
+
+app.commandLine.appendSwitch('disable-gpu');
+app.commandLine.appendSwitch('disable-gpu-compositing')
+
+// Modify the app.whenReady() event handler
+app.whenReady().then(() => {
+  log.info('Electron app ready');
+
+  let serverCheckAttempted = false; // Add this flag
+
+checkPortAvailable(8000, (available) => {
+  if (available) {
+    checkServerRunning();
+  } else {
+    dialog.showErrorBox(
+      'Port Error',
+      'Port 8000 is already in use. Please close any other instances of the application and try again.'
+    );
+    app.quit();
   }
-  mainWindow = null;
 });
 
-  // Create application menu
-  createMenu();
-}
+const checkServerRunning = () => {
+  const http = require('http');
+  const options = {
+    host: 'localhost',
+    port: 8000,
+    path: '/',
+    timeout: 2000
+  };
+
+  const req = http.get(options, (res) => {
+    log.info(`Eel server is running, status: ${res.statusCode}`);
+    createMainWindow(); // Changed from createSplashWindow to createMainWindow
+  });
+
+  req.on('error', (err) => {
+    log.info('Eel server not detected, starting Python backend');
+    startPythonBackend();
+
+    // Wait a bit then try to create the main window
+    setTimeout(() => {
+      createMainWindow(); // Changed from createSplashWindow to createMainWindow
+    }, 3000);
+  });
+};
+
+  checkServerRunning();
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      serverCheckAttempted = false; // Reset the flag
+      checkServerRunning();
+    }
+  });
+});
+
+// Add this IPC handler to receive the launch command from splash screen
+// Add this at the top
+
+// Modify the IPC handler
+ipcMain.on('launch-main-app', () => {
+  if (isMainAppLaunched) return;
+  isMainAppLaunched = true;
+
+  log.info('Received launch-main-app command');
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.loadURL('http://localhost:8000/index.html');
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+    createMenu();
+  }
+});
 
 // Create application menu
 function createMenu() {
@@ -158,9 +267,15 @@ function createMenu() {
   Menu.setApplicationMenu(menu);
 }
 
+// In the startPythonBackend function
 function startPythonBackend() {
   pythonPath = getPythonPath();
   const script = path.join(__dirname, 'main.py');
+  // In startPythonBackend function, add this check at the beginning:
+  if (pyProc && !pyProc.killed) {
+    log.info('Python backend already running');
+    return;
+  }
 
   log.info(`Starting Python backend: ${pythonPath} ${script}`);
 
@@ -181,7 +296,7 @@ function startPythonBackend() {
         data.toString().includes('Address already in use')) {
       log.info('Eel server seems to be already running, connecting to existing instance');
       // If Eel is running, create the window right away
-      createWindow();
+      createSplashWindow();
     }
   });
 
@@ -234,43 +349,6 @@ function stopPythonBackend() {
   }
 }
 
-// Replace the app.whenReady() event handler
-app.whenReady().then(() => {
-  log.info('Electron app ready');
-
-  // Check if Eel server is already running
-  const checkServerRunning = () => {
-    const http = require('http');
-    const options = {
-      host: 'localhost',
-      port: 8000,
-      path: '/',
-      timeout: 1000
-    };
-
-    const req = http.get(options, (res) => {
-      log.info(`Eel server is already running, status: ${res.statusCode}`);
-      createWindow();
-    });
-
-    req.on('error', (err) => {
-      log.info('Eel server not detected, starting Python backend');
-      startPythonBackend();
-      // Give the Python backend time to start
-      setTimeout(createWindow, 1500);
-    });
-  };
-
-  checkServerRunning();
-
-  // macOS app activation behavior
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
-  });
-});
-
 // Handle all windows closed
 app.on('window-all-closed', () => {
   log.info('All windows closed');
@@ -291,6 +369,11 @@ app.on('before-quit', () => {
 // Handle app will quit
 app.on('will-quit', () => {
   log.info('Application will quit');
+  // Destroy all windows first
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.destroy();
+  }
+  // Then stop Python backend
   stopPythonBackend();
 });
 
