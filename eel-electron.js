@@ -109,14 +109,16 @@ function checkBackendReady() {
   const http = require('http');
   const req = http.get('http://localhost:8000', (res) => {
     if (res.statusCode === 200) {
-      // Backend is ready, signal splash screen to transition
-      mainWindow.webContents.send('backend-ready');
+      // Backend is ready, signal the UI
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('backend-ready');
+      }
     }
   });
 
   req.on('error', () => {
     // Retry after delay
-    setTimeout(checkBackendReady, 500);
+    setTimeout(checkBackendReady, 1000);
   });
 }
 
@@ -144,51 +146,23 @@ function checkPortAvailable(port, callback) {
 app.whenReady().then(() => {
   log.info('Electron app ready');
 
-  let serverCheckAttempted = false; // Add this flag
+  // Create the main window immediately without checking server first
+  createMainWindow();
 
-checkPortAvailable(8000, (available) => {
-  if (available) {
-    checkServerRunning();
-  } else {
-    dialog.showErrorBox(
-      'Port Error',
-      'Port 8000 is already in use. Please close any other instances of the application and try again.'
-    );
-    app.quit();
-  }
-});
-
-const checkServerRunning = () => {
-  const http = require('http');
-  const options = {
-    host: 'localhost',
-    port: 8000,
-    path: '/',
-    timeout: 2000
-  };
-
-  const req = http.get(options, (res) => {
-    log.info(`Eel server is running, status: ${res.statusCode}`);
-    createMainWindow(); // Changed from createSplashWindow to createMainWindow
+  // Then check if port is available, but don't block UI
+  checkPortAvailable(8000, (available) => {
+    if (available) {
+      startPythonBackend();
+    } else {
+      log.warn('Port 8000 is already in use, assuming server is running');
+      // Try to connect to existing server
+      setTimeout(checkBackendReady, 1000);
+    }
   });
-
-  req.on('error', (err) => {
-    log.info('Eel server not detected, starting Python backend');
-    startPythonBackend();
-
-    // Wait a bit then try to create the main window
-    setTimeout(() => {
-      createMainWindow(); // Changed from createSplashWindow to createMainWindow
-    }, 3000);
-  });
-};
-
-  checkServerRunning();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      serverCheckAttempted = false; // Reset the flag
-      checkServerRunning();
+      createMainWindow();
     }
   });
 });
@@ -203,7 +177,14 @@ ipcMain.on('launch-main-app', () => {
 
   log.info('Received launch-main-app command');
   if (mainWindow && !mainWindow.isDestroyed()) {
+    // Load main app regardless of backend status
     mainWindow.loadURL('http://localhost:8000/index.html');
+
+    // Start Python backend if not already running
+    if (!pyProc || pyProc.killed) {
+      startPythonBackend();
+    }
+
     if (mainWindow.isMinimized()) mainWindow.restore();
     mainWindow.focus();
     createMenu();
