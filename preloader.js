@@ -7,25 +7,85 @@ let isLaunching = false;
 function launchApp() {
   if (isLaunching) return;
   isLaunching = true;
-
+  console.log('Launching application...');
   ipcRenderer.send('launch-main-app');
 }
 
-// Make sure the launch button is properly connected
+// Execute code when the document is loaded
 window.addEventListener('DOMContentLoaded', () => {
   console.log('Preloader script loaded');
 
+  // Enable the launch button immediately without waiting for backend-ready
   const launchButton = document.getElementById('launchButton');
   if (launchButton) {
     console.log('Launch button found, adding click listener');
+    launchButton.disabled = false;
+    launchButton.classList.remove('opacity-50');
     launchButton.addEventListener('click', launchApp);
   } else {
-    console.log('Launch button not found!');
+    // Button might be added dynamically, set up a mutation observer
+    console.log('Launch button not found, setting up observer');
+    const observer = new MutationObserver((mutations, obs) => {
+      const button = document.getElementById('launchButton');
+      if (button) {
+        console.log('Launch button found via observer');
+        button.disabled = false;
+        button.classList.remove('opacity-50');
+        button.addEventListener('click', launchApp);
+        obs.disconnect(); // Stop observing once we've found the button
+      }
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
   }
 
-  // Remove auto-launch timer to prevent automatic launching
-  // Now the app will only launch when the button is clicked
+  // Add all other button event listeners immediately
+  setupButtonListeners();
+
+  // Add version information to the UI
+  const appVersion = '1.0.0'; // This should match your package.json
+
+  // Add a small version indicator in the bottom corner
+  const versionElement = document.createElement('div');
+  versionElement.className = 'fixed bottom-1 right-2 text-xs text-gray-500';
+  versionElement.textContent = `Polaris v${appVersion}`;
+  document.body.appendChild(versionElement);
+
+  // Still listen for backend-ready, but just for UI enhancement
+  ipcRenderer.on('backend-ready', () => {
+    console.log('Backend ready');
+    const launchButton = document.getElementById('launchButton');
+    if (launchButton) {
+      launchButton.textContent = "Get Started";
+      launchButton.classList.add('bg-green-600');
+      launchButton.classList.remove('bg-blue-600');
+      // Add a brief animation to indicate readiness
+      launchButton.classList.add('animate-pulse');
+      setTimeout(() => {
+        launchButton.classList.remove('animate-pulse');
+      }, 3000);
+    }
+  });
+
+  // Add modern UI enhancements
+  enhanceUserInterface();
 });
+
+function setupButtonListeners() {
+  // Add direct listeners for all function buttons
+  const buttonIds = ['loadFilesBtn', 'generateBtn', 'saveGraphBtn', 'resetBtn', 'toggle3dBtn'];
+
+  buttonIds.forEach(id => {
+    const button = document.getElementById(id);
+    if (button) {
+      button.disabled = false;
+      button.classList.remove('opacity-50');
+    }
+  });
+}
 
 // Add modern UI touches and animations
 function enhanceUserInterface() {
@@ -101,48 +161,6 @@ function enhanceUserInterface() {
   }, 3000);
 }
 
-// Execute code when the document is loaded
-window.addEventListener('DOMContentLoaded', () => {
-  // Add any custom initialization here
-  console.log('Preload script loaded');
-
-  // Add version information to the UI
-  const appVersion = '1.0.0'; // This should match your package.json
-
-  // Add a small version indicator in the bottom corner
-  const versionElement = document.createElement('div');
-  versionElement.className = 'fixed bottom-1 right-2 text-xs text-gray-500';
-  versionElement.textContent = `Polaris v${appVersion}`;
-  document.body.appendChild(versionElement);
-
-  const launchButton = document.getElementById('launchButton');
-  if (launchButton) {
-    launchButton.addEventListener('click', () => {
-      launchApp();
-    });
-  }
-
-  // Modify backend-ready event to just update UI instead of auto-launching
-  ipcRenderer.on('backend-ready', () => {
-    console.log('Backend ready, waiting for user to click button');
-    // Update button text or appearance to indicate readiness if desired
-    const launchButton = document.getElementById('launchButton');
-    if (launchButton) {
-      launchButton.textContent = "Get Started";
-      launchButton.disabled = false;
-      launchButton.classList.remove('opacity-50');
-      launchButton.classList.add('animate-pulse');
-      // Stop pulsing after 3 seconds
-      setTimeout(() => {
-        launchButton.classList.remove('animate-pulse');
-      }, 3000);
-    }
-  });
-
-  // Add modern UI enhancements
-  enhanceUserInterface();
-});
-
 // Expose protected methods to the splash screen
 contextBridge.exposeInMainWorld('electronAPI', {
   send: (channel, data) => {
@@ -152,10 +170,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     }
   },
   receive: (channel, func) => {
-    let validChannels = ['message-from-main'];
+    let validChannels = ['message-from-main', 'backend-ready'];
     if (validChannels.includes(channel)) {
       ipcRenderer.on(channel, (event, ...args) => func(...args));
     }
+  },
+  launchApp: () => {
+    launchApp();
   },
   getAppVersion: () => '1.0.0',
   getPlatform: () => process.platform
