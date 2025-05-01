@@ -4,6 +4,8 @@ import sys
 import eel
 import numpy as np
 import matplotlib
+import socket
+import time
 
 matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
@@ -13,7 +15,18 @@ from tkinter import filedialog
 import random
 import base64
 import string
-import time
+
+# Helper function to find an available port
+def find_free_port(start_port=8000, max_attempts=10):
+    """Find a free port starting from start_port."""
+    for port in range(start_port, start_port + max_attempts):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind(('localhost', port))
+                return port
+            except OSError:
+                continue
+    return None
 
 # Initialize Eel
 eel.init('web')
@@ -376,8 +389,21 @@ def launch_main_app():
 def is_backend_ready():
     return True
 
+# Instead of hardcoding port 8000, find a free port
+port = find_free_port(8000, 20)
+if port is None:
+    print("ERROR: Could not find a free port. Exiting.")
+    sys.exit(1)
 
-eel.start('splash.html', mode='electron', host='localhost', port=8000, position=None, disable_cache=True)
+# Create a file to communicate the port to Electron
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "port.txt"), "w") as f:
+    f.write(str(port))
 
+# Start Eel with the found port
+print(f"Starting Eel on port {port}")
+eel.start('splash.html', mode='electron', host='localhost', port=port, position=None, block=False)
 
-
+# Keep the application running
+while True:
+    eel.sleep(1.0)
+    
