@@ -2,11 +2,8 @@
 let loadedFiles = [];
 let is3D = false;
 
-// DOM Elements
+
 document.addEventListener('DOMContentLoaded', () => {
-  // When everything is ready
-  window.addEventListener('load', () => {
-});
   // Initialize event listeners
   document.getElementById('loadFilesBtn').addEventListener('click', loadFiles);
   document.getElementById('resetBtn').addEventListener('click', resetApplication);
@@ -423,7 +420,7 @@ function isLightColor(color) {
   return lightColors.includes(color);
 }
 
-// In script.js, add a new function to update the stats dashboard
+
 async function updateStatsDashboard() {
   try {
     const stats = await eel.get_graph_stats()();
@@ -535,3 +532,4 @@ async function addCustomColor() {
 function showMessage(message) {
   alert(message);
 }
+
