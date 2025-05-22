@@ -170,7 +170,7 @@ def generer_graphique():
         else:
             ax = fig.add_subplot(111, projection='polar')
 
-        default_colors = ["red", "blue", "green", "orange", "purple"]
+        default_colors = ["red", "green", "yellow"]
 
         # Plot each file
         for i, fichier in enumerate(fichiers):
@@ -249,7 +249,6 @@ def tracer_polaire_3d(ax, valeurs, couleur, label):
     # Set the view angles
     ax.view_init(elev=elevation, azim=azimuth)
 
-    # Rest of the function remains the same
     angles = np.linspace(0, 2 * np.pi, len(valeurs))
     r = np.array(valeurs) * scale_factor
 
@@ -262,8 +261,14 @@ def tracer_polaire_3d(ax, valeurs, couleur, label):
     grid_x, grid_y = np.mgrid[min(x):max(x):100j, min(y):max(y):100j]
     grid_z = griddata((x, y), z, (grid_x, grid_y), method='cubic')
 
-    # Display the smoothed surface
-    surf = ax.plot_surface(grid_x, grid_y, grid_z, cmap='plasma', edgecolor='none', alpha=0.9)
+    # Create custom colormap: green (bottom) -> yellow (middle) -> red (top)
+    from matplotlib.colors import LinearSegmentedColormap
+    colors = ['green', 'yellow', 'red']
+    n_bins = 256
+    custom_cmap = LinearSegmentedColormap.from_list('custom', colors, N=n_bins)
+
+    # Display the smoothed surface with custom colormap
+    surf = ax.plot_surface(grid_x, grid_y, grid_z, cmap=custom_cmap, edgecolor='none', alpha=0.9)
     ax.set_title(label)
 
     # Add a color bar
@@ -406,4 +411,3 @@ eel.start('splash.html', mode='electron', host='localhost', port=port, position=
 # Keep the application running
 while True:
     eel.sleep(1.0)
-    
